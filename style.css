@@ -71,6 +71,10 @@ button:hover{
     background:#1565c0;
 }
 
+#btnBaixar{
+    background:#2e7d32;
+}
+
 #btnLimpar{
     background:#d32f2f;
 }
