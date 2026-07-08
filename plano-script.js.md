@@ -1,10 +1,8 @@
-Acho uma ótima ideia. Como você já tem o HTML e o CSS, o melhor é pedir que ele desenvolva um **JavaScript modular**, em vez de um único arquivo cheio de código. Isso facilita futuras melhorias.
 
-Você pode entregar um documento como este:
 
 ---
 
-# Especificação Técnica - `script.js`
+# Especificação Técnica - `script.js` baseado no pprocessamento de  CMRBX5C5.json
 
 ## Objetivo
 
