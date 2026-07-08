@@ -185,16 +185,12 @@ function questaoParaTexto(questao, numero) {
     linhas.push("");
 
     questao.alternativas.forEach((alternativa) => {
-        linhas.push(`${alternativa.letra.toLowerCase()})`);
-        linhas.push(htmlParaTexto(alternativa.html));
-        linhas.push("");
+        linhas.push(`${alternativa.letra.toLowerCase()}) ${htmlParaTexto(alternativa.html)}`);
     });
 
-    linhas.push(`Identificador:`);
-    linhas.push(questao.identificador);
     linhas.push("");
-    linhas.push(`Gabarito:`);
-    linhas.push(questao.gabarito);
+    linhas.push(`Identificador: ${questao.identificador}`);
+    linhas.push(`Gabarito: ${questao.gabarito}`);
 
     return linhas.join("\n");
 }
