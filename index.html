@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrator de Questões JSON</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <header>
+
+            <h1>Extrator de Questões</h1>
+
+            <p>
+                Carregue um ou mais arquivos JSON exportados e o sistema extrairá
+                apenas a questão, alternativas, identificador e gabarito.
+            </p>
+
+        </header>
+
+        <section class="painel">
+
+            <input
+                type="file"
+                id="inputArquivos"
+                accept=".json"
+                multiple>
+
+            <div class="botoes">
+
+                <button id="btnCopiar">
+                    📋 Copiar Questões
+                </button>
+
+                <button id="btnLimpar">
+                    🗑 Limpar
+                </button>
+
+            </div>
+
+        </section>
+
+        <section id="estatisticas">
+
+            <div class="card">
+                <span id="totalArquivos">0</span>
+                <small>Arquivos</small>
+            </div>
+
+            <div class="card">
+                <span id="totalQuestoes">0</span>
+                <small>Questões</small>
+            </div>
+
+        </section>
+
+        <main id="resultado">
+
+            <div class="vazio">
+
+                Nenhuma questão carregada.
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
