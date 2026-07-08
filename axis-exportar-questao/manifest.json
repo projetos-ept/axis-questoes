@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Áxis - Exportar Questão",
+  "version": "1.0",
+  "description": "Adiciona um botão para baixar a questão visualizada em HTML/JSON bruto.",
+  "content_scripts": [
+    {
+      "matches": ["https://www.ceteplnab.com.br/dashboard/questoes*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
