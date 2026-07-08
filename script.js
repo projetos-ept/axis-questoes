@@ -9,6 +9,7 @@ function init() {
 function bindEvents() {
     document.getElementById("inputArquivos").addEventListener("change", onSelecionarArquivos);
     document.getElementById("btnCopiar").addEventListener("click", copiarQuestoes);
+    document.getElementById("btnBaixar").addEventListener("click", baixarTxt);
     document.getElementById("btnLimpar").addEventListener("click", limpar);
 }
 
@@ -70,20 +71,31 @@ function extrairEnunciado(doc) {
     return enunciadoEl ? enunciadoEl.innerHTML.trim() : "";
 }
 
+function obterItensAlternativas(doc) {
+    const blocoAlternativas = doc.querySelector(".pl-6");
+    return blocoAlternativas ? Array.from(blocoAlternativas.children) : [];
+}
+
+function obterLetraDoItem(item) {
+    const spanLetra = Array.from(item.children)
+        .flatMap((filho) => (filho.matches("span") ? [filho] : Array.from(filho.querySelectorAll(":scope > span"))))
+        .find((span) => /^[a-e]\)$/i.test(span.textContent.trim()));
+
+    return spanLetra ? spanLetra.textContent.trim().replace(")", "").toUpperCase() : null;
+}
+
 function extrairAlternativas(doc) {
-    const itens = doc.querySelectorAll(".pl-6 > div");
+    const itens = obterItensAlternativas(doc);
     const alternativas = [];
 
     itens.forEach((item) => {
-        const spanLetra = Array.from(item.querySelectorAll("span")).find((span) =>
-            /^[a-e]\)$/i.test(span.textContent.trim())
-        );
-        const conteudo = item.querySelector(".preview-content");
+        const letra = obterLetraDoItem(item);
+        const conteudo = item.querySelector(":scope > div.preview-content");
 
-        if (!spanLetra || !conteudo) return;
+        if (!letra || !conteudo) return;
 
         alternativas.push({
-            letra: spanLetra.textContent.trim().replace(")", "").toUpperCase(),
+            letra,
             html: conteudo.innerHTML.trim()
         });
     });
@@ -92,7 +104,7 @@ function extrairAlternativas(doc) {
 }
 
 function detectarGabarito(doc) {
-    const itens = doc.querySelectorAll(".pl-6 > div");
+    const itens = obterItensAlternativas(doc);
 
     for (const item of itens) {
         const marcado =
@@ -102,11 +114,8 @@ function detectarGabarito(doc) {
 
         if (!marcado) continue;
 
-        const spanLetra = Array.from(item.querySelectorAll("span")).find((span) =>
-            /^[a-e]\)$/i.test(span.textContent.trim())
-        );
-
-        if (spanLetra) return spanLetra.textContent.trim().replace(")", "").toUpperCase();
+        const letra = obterLetraDoItem(item);
+        if (letra) return letra;
     }
 
     return "";
@@ -169,10 +178,10 @@ function renderizarQuestao(questao, numero) {
     return container;
 }
 
-function questaoParaTexto(questao) {
+function questaoParaTexto(questao, numero) {
     const linhas = [];
 
-    linhas.push(htmlParaTexto(questao.enunciado));
+    linhas.push(`${numero}. ${htmlParaTexto(questao.enunciado)}`);
     linhas.push("");
 
     questao.alternativas.forEach((alternativa) => {
@@ -195,16 +204,34 @@ function htmlParaTexto(html) {
     return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
 }
 
+function montarTextoCompleto() {
+    return questoes
+        .map((questao, indice) => questaoParaTexto(questao, indice + 1))
+        .join("\n\n========================================\n\n");
+}
+
 async function copiarQuestoes() {
     if (questoes.length === 0) return;
 
-    const texto = questoes.map(questaoParaTexto).join("\n\n========================================\n\n");
-
     try {
-        await navigator.clipboard.writeText(texto);
+        await navigator.clipboard.writeText(montarTextoCompleto());
     } catch (erro) {
         console.error("Falha ao copiar questões:", erro);
     }
+}
+
+function baixarTxt() {
+    if (questoes.length === 0) return;
+
+    const blob = new Blob([montarTextoCompleto()], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "questoes.txt";
+    link.click();
+
+    URL.revokeObjectURL(url);
 }
 
 function limpar() {
