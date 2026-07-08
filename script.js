@@ -21,7 +21,7 @@ async function onSelecionarArquivos(evento) {
 
 async function processarArquivos(arquivos) {
     const resultados = await Promise.all(arquivos.map(processarArquivo));
-    const novasQuestoes = resultados.filter(Boolean);
+    const novasQuestoes = resultados.flat();
 
     questoes = questoes.concat(novasQuestoes);
 
@@ -33,17 +33,48 @@ async function processarArquivo(arquivo) {
     try {
         const texto = await arquivo.text();
         const json = JSON.parse(texto);
+        const identificadorArquivo = arquivo.name.replace(/\.[^.]+$/, "");
 
-        if (!json || typeof json.html !== "string") return null;
+        if (Array.isArray(json)) {
+            return json
+                .map((item, indice) => extrairQuestaoEstruturada(item, identificadorArquivo, indice))
+                .filter((questao) => questao.enunciado);
+        }
 
-        const doc = parseHTML(json.html);
-        const identificador = arquivo.name.replace(/\.[^.]+$/, "");
+        if (json && typeof json.html === "string") {
+            const doc = parseHTML(json.html);
+            return [criarObjetoQuestao(doc, identificadorArquivo)];
+        }
 
-        return criarObjetoQuestao(doc, identificador);
+        if (json && typeof json.enunciado === "string") {
+            return [extrairQuestaoEstruturada(json, identificadorArquivo, 0)];
+        }
+
+        return [];
     } catch (erro) {
         console.error(`Falha ao processar "${arquivo.name}":`, erro);
-        return null;
+        return [];
     }
+}
+
+function extrairQuestaoEstruturada(item, identificadorArquivo, indice) {
+    if (!item) return { identificador: "", enunciado: "", alternativas: [], gabarito: "" };
+
+    const identificador = item.codigo || item.id || `${identificadorArquivo}-${indice + 1}`;
+
+    const alternativas = ["A", "B", "C", "D", "E"]
+        .map((letra) => {
+            const html = item[`alternativa${letra}`];
+            return typeof html === "string" && html.trim() ? { letra, html: html.trim() } : null;
+        })
+        .filter(Boolean);
+
+    return {
+        identificador,
+        enunciado: typeof item.enunciado === "string" ? item.enunciado.trim() : "",
+        alternativas,
+        gabarito: typeof item.correta === "string" ? item.correta.trim().toUpperCase() : ""
+    };
 }
 
 function parseHTML(html) {
