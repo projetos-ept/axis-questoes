@@ -2,7 +2,7 @@
 
 ---
 
-# Especificação Técnica - `script.js` baseado no pprocessamento de  CMRBX5C5.json
+# Especificação Técnica - `script.js` baseado no pprocessamento de  CMRBX5C5.json  (questão exemplo do  sistema de  origem, todas terão a mesma estrutura)
 
 ## Objetivo
 
