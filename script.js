@@ -1,0 +1,231 @@
+"use strict";
+
+let questoes = [];
+
+function init() {
+    bindEvents();
+}
+
+function bindEvents() {
+    document.getElementById("inputArquivos").addEventListener("change", onSelecionarArquivos);
+    document.getElementById("btnCopiar").addEventListener("click", copiarQuestoes);
+    document.getElementById("btnLimpar").addEventListener("click", limpar);
+}
+
+async function onSelecionarArquivos(evento) {
+    const arquivos = Array.from(evento.target.files || []);
+    if (arquivos.length === 0) return;
+    await processarArquivos(arquivos);
+}
+
+async function processarArquivos(arquivos) {
+    const resultados = await Promise.all(arquivos.map(processarArquivo));
+    const novasQuestoes = resultados.filter(Boolean);
+
+    questoes = questoes.concat(novasQuestoes);
+
+    renderizarQuestoes(questoes);
+    atualizarEstatisticas(arquivos.length, novasQuestoes.length);
+}
+
+async function processarArquivo(arquivo) {
+    try {
+        const texto = await arquivo.text();
+        const json = JSON.parse(texto);
+
+        if (!json || typeof json.html !== "string") return null;
+
+        const doc = parseHTML(json.html);
+        const identificador = arquivo.name.replace(/\.[^.]+$/, "");
+
+        return criarObjetoQuestao(doc, identificador);
+    } catch (erro) {
+        console.error(`Falha ao processar "${arquivo.name}":`, erro);
+        return null;
+    }
+}
+
+function parseHTML(html) {
+    const parser = new DOMParser();
+    return parser.parseFromString(html, "text/html");
+}
+
+function criarObjetoQuestao(doc, identificador) {
+    return {
+        identificador,
+        enunciado: extrairEnunciado(doc),
+        alternativas: extrairAlternativas(doc),
+        gabarito: detectarGabarito(doc)
+    };
+}
+
+function extrairEnunciado(doc) {
+    const blocoAlternativas = doc.querySelector(".pl-6");
+    const previews = Array.from(doc.querySelectorAll(".preview-content"));
+
+    const enunciadoEl = previews.find(
+        (el) => !blocoAlternativas || !blocoAlternativas.contains(el)
+    );
+
+    return enunciadoEl ? enunciadoEl.innerHTML.trim() : "";
+}
+
+function extrairAlternativas(doc) {
+    const itens = doc.querySelectorAll(".pl-6 > div");
+    const alternativas = [];
+
+    itens.forEach((item) => {
+        const spanLetra = Array.from(item.querySelectorAll("span")).find((span) =>
+            /^[a-e]\)$/i.test(span.textContent.trim())
+        );
+        const conteudo = item.querySelector(".preview-content");
+
+        if (!spanLetra || !conteudo) return;
+
+        alternativas.push({
+            letra: spanLetra.textContent.trim().replace(")", "").toUpperCase(),
+            html: conteudo.innerHTML.trim()
+        });
+    });
+
+    return alternativas;
+}
+
+function detectarGabarito(doc) {
+    const itens = doc.querySelectorAll(".pl-6 > div");
+
+    for (const item of itens) {
+        const marcado =
+            item.querySelector('[title="Gabarito"]') ||
+            item.querySelector(".bg-emerald-50, [class*='bg-emerald']") ||
+            item.querySelector(".border-emerald-200, [class*='border-emerald']");
+
+        if (!marcado) continue;
+
+        const spanLetra = Array.from(item.querySelectorAll("span")).find((span) =>
+            /^[a-e]\)$/i.test(span.textContent.trim())
+        );
+
+        if (spanLetra) return spanLetra.textContent.trim().replace(")", "").toUpperCase();
+    }
+
+    return "";
+}
+
+function renderizarQuestoes(listaQuestoes) {
+    const resultado = document.getElementById("resultado");
+    resultado.innerHTML = "";
+
+    if (listaQuestoes.length === 0) {
+        const vazio = document.createElement("div");
+        vazio.className = "vazio";
+        vazio.textContent = "Nenhuma questão carregada.";
+        resultado.appendChild(vazio);
+        return;
+    }
+
+    const fragmento = document.createDocumentFragment();
+    listaQuestoes.forEach((questao, indice) => {
+        fragmento.appendChild(renderizarQuestao(questao, indice + 1));
+    });
+    resultado.appendChild(fragmento);
+}
+
+function renderizarQuestao(questao, numero) {
+    const container = document.createElement("div");
+    container.className = "questao";
+
+    const numeroEl = document.createElement("div");
+    numeroEl.className = "numero";
+    numeroEl.textContent = `Questão ${numero}`;
+    container.appendChild(numeroEl);
+
+    const enunciadoEl = document.createElement("div");
+    enunciadoEl.className = "enunciado preview-content";
+    enunciadoEl.innerHTML = questao.enunciado;
+    container.appendChild(enunciadoEl);
+
+    questao.alternativas.forEach((alternativa) => {
+        const altEl = document.createElement("div");
+        altEl.className = "alternativa";
+
+        const letraEl = document.createElement("strong");
+        letraEl.textContent = `${alternativa.letra})`;
+        altEl.appendChild(letraEl);
+
+        const conteudoEl = document.createElement("span");
+        conteudoEl.className = "preview-content";
+        conteudoEl.innerHTML = alternativa.html;
+        altEl.appendChild(conteudoEl);
+
+        container.appendChild(altEl);
+    });
+
+    const infoEl = document.createElement("div");
+    infoEl.className = "info";
+    infoEl.innerHTML = `<b>Identificador:</b> ${questao.identificador}<br><b>Gabarito:</b> ${questao.gabarito}`;
+    container.appendChild(infoEl);
+
+    return container;
+}
+
+function questaoParaTexto(questao) {
+    const linhas = [];
+
+    linhas.push(htmlParaTexto(questao.enunciado));
+    linhas.push("");
+
+    questao.alternativas.forEach((alternativa) => {
+        linhas.push(`${alternativa.letra.toLowerCase()})`);
+        linhas.push(htmlParaTexto(alternativa.html));
+        linhas.push("");
+    });
+
+    linhas.push(`Identificador:`);
+    linhas.push(questao.identificador);
+    linhas.push("");
+    linhas.push(`Gabarito:`);
+    linhas.push(questao.gabarito);
+
+    return linhas.join("\n");
+}
+
+function htmlParaTexto(html) {
+    const doc = parseHTML(html);
+    return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+async function copiarQuestoes() {
+    if (questoes.length === 0) return;
+
+    const texto = questoes.map(questaoParaTexto).join("\n\n========================================\n\n");
+
+    try {
+        await navigator.clipboard.writeText(texto);
+    } catch (erro) {
+        console.error("Falha ao copiar questões:", erro);
+    }
+}
+
+function limpar() {
+    questoes = [];
+    document.getElementById("inputArquivos").value = "";
+    renderizarQuestoes(questoes);
+    atualizarEstatisticas(0, 0, true);
+}
+
+function atualizarEstatisticas(novosArquivos, novasQuestoes, resetar = false) {
+    const totalArquivosEl = document.getElementById("totalArquivos");
+    const totalQuestoesEl = document.getElementById("totalQuestoes");
+
+    if (resetar) {
+        totalArquivosEl.textContent = "0";
+        totalQuestoesEl.textContent = "0";
+        return;
+    }
+
+    totalArquivosEl.textContent = String(Number(totalArquivosEl.textContent) + novosArquivos);
+    totalQuestoesEl.textContent = String(Number(totalQuestoesEl.textContent) + novasQuestoes);
+}
+
+document.addEventListener("DOMContentLoaded", init);
